@@ -16,6 +16,8 @@
                     @endif
 
                     You are logged in!
+                    <br>
+                    <a class="btn btn-default" href="/admin/customer/import/google">Импортировать контакты</a>
                 </div>
             </div>
         </div>

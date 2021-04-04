@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Spatie\MediaLibrary\Models\Media;
 use Symfony\Component\HttpFoundation\Response;
 use Yajra\DataTables\Facades\DataTables;
+use App\Jobs\SaveCustomerToDb;
 
 class CustomersController extends Controller
 {
@@ -163,5 +164,43 @@ class CustomersController extends Controller
         $media         = $model->addMediaFromRequest('upload')->toMediaCollection('ck-media');
 
         return response()->json(['id' => $media->id, 'url' => $media->getUrl()], Response::HTTP_CREATED);
+    }
+
+    public function importGoogleContact()
+    {
+        $code = request()->get('code');
+
+        $googleService = \OAuth::consumer('Google');
+
+        if ( ! is_null($code)) {
+
+            // This was a callback request from google, get the token
+            $token = $googleService->requestAccessToken($code);
+
+            // Send a request with it
+            $result = json_decode($googleService->request('https://www.google.com/m8/feeds/contacts/default/full?alt=json&amp;max-results=4000'), true);
+
+            $emails = [];
+            foreach ($result['feed']['entry'] as $contact) {
+                if (isset($contact['gd$email'])) { // Sometimes, a contact doesn't have email address
+//                    $emails[] = $contact['gd$email'][0]['address'];
+                    // $emails[] = $contact;
+                    SaveCustomerToDb::dispatch($contact['title']['$t'], $contact['gd$email'][0]['address'], '', '');
+                }
+            }
+
+            // return $emails;
+            return redirect('/admin');
+
+        }
+
+        // if not ask for permission first
+        else {
+            // get googleService authorization
+            $url = $googleService->getAuthorizationUri();
+
+            // return to google login url
+            return redirect((string)$url);
+        }
     }
 }
